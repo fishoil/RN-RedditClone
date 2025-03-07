@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { View, FlatList } from "react-native";
+import { View, FlatList, ActivityIndicator, Text } from "react-native";
 import PostListItem from '../../../components/PostListItem';
-import { supabase } from '../../../lib/supabase' 
+import { supabase } from '../../../lib/supabase'
 import { Tables } from '../../../types/database.types'
+import { useQuery } from "@tanstack/react-query";
 
 type Post = Tables<"posts"> & {
   user: Tables<'users'>
@@ -10,26 +11,34 @@ type Post = Tables<"posts"> & {
 }
 
 export default function HomeScreen() {
-  const [posts, setPosts] = useState<Post[]>([])
-
-  useEffect(() => {
-    fetchPosts()
-  }, [])
+  const { data: posts, isLoading, error } = useQuery({
+    queryKey: ['posts'],
+    queryFn: () => fetchPosts()
+  })
 
   const fetchPosts = async () => {
     const { data, error } = await supabase
       .from('posts')
       .select('*, group:groups(*), user:users!posts_user_id_fkey(*)')
     if (error) {
-      console.log(error)
+      // console.log(error)
+      throw error
     } else {
-      setPosts(data)
+      return data
     }
+  }
+
+  if (isLoading) {
+    return <ActivityIndicator />
+  }
+  if (error) {
+    console.log(error)
+    return <Text>Error fetching posts!</Text>
   }
 
   return (
     <View>
-      <FlatList 
+      <FlatList
         data={posts}
         renderItem={({ item }) => <PostListItem post={item} />}
       />
