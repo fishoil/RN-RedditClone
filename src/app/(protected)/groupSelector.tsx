@@ -1,21 +1,39 @@
-import { View, Text, SafeAreaView, TextInput, FlatList, Pressable, Image } from "react-native";
+import { View, Text, SafeAreaView, TextInput, FlatList, Pressable, Image, ActivityIndicator } from "react-native";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { router } from "expo-router";
 import { useState } from "react";
-import groups from '../../../assets/data/groups.json'
+// import groups from '../../../assets/data/groups.json'
 import { selectedGroupAtom } from "../../atoms";
 import { useSetAtom } from "jotai";
 import { Group } from "../../types";
+import { useQuery } from "@tanstack/react-query";
+import { fetchGroups } from "../../services/groupServices";
 
 export default function GroupSelector() {
   const [searchValue, setSearchValue] = useState<string>("")
   const setGroup = useSetAtom(selectedGroupAtom)
 
-  const filteredGroups = groups.filter((group) => group.name.toLowerCase().includes(searchValue.toLowerCase()))
+  const {data, isLoading, error} = useQuery({
+    queryKey: ["groups", { searchValue }],
+    queryFn: () => fetchGroups(searchValue),
+    staleTime: 10000,
+    placeholderData: (previousData) => previousData
+  })
+
+  // const filteredGroups = data.filter((group) => group.name.toLowerCase().includes(searchValue.toLowerCase()))
   const onGroupSelected = (group: Group) => {
     setGroup(group);
     router.back()
   }
+
+  if (isLoading) {
+    return <ActivityIndicator />
+  }
+  if (error || !data) {
+    return <Text>Error fetching groups</Text>
+  }
+
+  // const filteredGroups = data.filter((group) => group.name.toLowerCase().includes(searchValue.toLowerCase()))
 
   return (
     <SafeAreaView style={{ marginHorizontal: 10, flex: 1 }}>
@@ -39,7 +57,7 @@ export default function GroupSelector() {
       </View>
 
       <FlatList
-        data={filteredGroups}
+        data={data}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => onGroupSelected(item)}
